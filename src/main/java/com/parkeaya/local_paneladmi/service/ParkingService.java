@@ -1,17 +1,22 @@
 package com.parkeaya.local_paneladmi.service;
 
 import com.parkeaya.local_paneladmi.model.dto.DjangoParkingDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @Service
 public class ParkingService {
+    private static final Logger logger = LoggerFactory.getLogger(ParkingService.class);
 
     @Value("${django.api.url}")
     private String djangoApiUrl;
@@ -22,164 +27,176 @@ public class ParkingService {
         this.restTemplate = restTemplate;
     }
 
-    public List<DjangoParkingDTO> getParkingsByOwnerEmail(String email) {
+    public List<DjangoParkingDTO> getOwnerParkings(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
         try {
-            // Obtener todos los parkings
-            String url = djangoApiUrl + "/parking/";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
-            ResponseEntity<DjangoParkingDTO[]> response = restTemplate.exchange(
-                url,
+            ResponseEntity<List<DjangoParkingDTO>> response = restTemplate.exchange(
+                djangoApiUrl + "/api/parking/",
                 HttpMethod.GET,
-                entity,
-                DjangoParkingDTO[].class
+                request,
+                new ParameterizedTypeReference<List<DjangoParkingDTO>>() {}
             );
             
-            // Filtrar por dueño (usando el campo 'dueno' que viene de Django)
-            Long ownerId = getOwnerIdByEmail(email);
-            if (response.getBody() != null) {
-                return Arrays.stream(response.getBody())
-                    .filter(parking -> parking.getDueno() != null && parking.getDueno().equals(ownerId))
-                    .collect(java.util.stream.Collectors.toList());
-            }
-            
-            return Collections.emptyList();
-            
+            return response.getBody();
         } catch (Exception e) {
-            System.err.println("Error al obtener parkings: " + e.getMessage());
-            return Collections.emptyList();
+            logger.error("Error al obtener estacionamientos: {}", e.getMessage());
+            throw new RuntimeException("Error al obtener estacionamientos: " + e.getMessage());
         }
     }
 
-    public DjangoParkingDTO getParkingByIdAndOwner(Long parkingId, String email) {
+    public DjangoParkingDTO getParkingById(Long parkingId, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
         try {
-            String url = djangoApiUrl + "/parking/" + parkingId + "/";
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
             ResponseEntity<DjangoParkingDTO> response = restTemplate.exchange(
-                url,
+                djangoApiUrl + "/api/parking/" + parkingId + "/",
                 HttpMethod.GET,
-                entity,
+                request,
                 DjangoParkingDTO.class
             );
             
-            // Verificar propiedad
-            Long ownerId = getOwnerIdByEmail(email);
-            DjangoParkingDTO parking = response.getBody();
-            if (parking != null && !parking.getDueno().equals(ownerId)) {
-                throw new RuntimeException("No tienes permisos para acceder a este parking");
-            }
+            return response.getBody();
+        } catch (Exception e) {
+            logger.error("Error al obtener estacionamiento: {}", e.getMessage());
+            throw new RuntimeException("Error al obtener estacionamiento: " + e.getMessage());
+        }
+    }
+
+    public DjangoParkingDTO createParking(DjangoParkingDTO parking, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<DjangoParkingDTO> request = new HttpEntity<>(parking, headers);
+        
+        try {
+            ResponseEntity<DjangoParkingDTO> response = restTemplate.exchange(
+                djangoApiUrl + "/api/parking/",
+                HttpMethod.POST,
+                request,
+                DjangoParkingDTO.class
+            );
             
-            return parking;
+            logger.info("Estacionamiento creado exitosamente: {}", parking.getNombre());
+            return response.getBody();
+        } catch (Exception e) {
+            logger.error("Error al crear estacionamiento: {}", e.getMessage());
+            throw new RuntimeException("Error al crear estacionamiento: " + e.getMessage());
+        }
+    }
+
+    public DjangoParkingDTO updateParking(Long id, DjangoParkingDTO parking, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<DjangoParkingDTO> request = new HttpEntity<>(parking, headers);
+        
+        try {
+            ResponseEntity<DjangoParkingDTO> response = restTemplate.exchange(
+                djangoApiUrl + "/api/parking/" + id + "/",
+                HttpMethod.PUT,
+                request,
+                DjangoParkingDTO.class
+            );
             
+            logger.info("Estacionamiento actualizado exitosamente: {}", parking.getNombre());
+            return response.getBody();
         } catch (Exception e) {
-            throw new RuntimeException("Error al obtener parking: " + e.getMessage());
+            logger.error("Error al actualizar estacionamiento: {}", e.getMessage());
+            throw new RuntimeException("Error al actualizar estacionamiento: " + e.getMessage());
         }
     }
 
-    public DjangoParkingDTO createParking(DjangoParkingDTO parkingDTO, String email) {
+    public void deleteParking(Long parkingId, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
         try {
-            Long ownerId = getOwnerIdByEmail(email);
-            // El campo en Django es 'dueno', no 'ownerId'
-            // Django se encargará de asignar el dueño basado en la autenticación
-            return createParkingInDjango(parkingDTO);
+            restTemplate.exchange(
+                djangoApiUrl + "/api/parking/" + parkingId + "/",
+                HttpMethod.DELETE,
+                request,
+                Void.class
+            );
+            
+            logger.info("Estacionamiento eliminado exitosamente: ID {}", parkingId);
         } catch (Exception e) {
-            throw new RuntimeException("Error al crear parking: " + e.getMessage());
+            logger.error("Error al eliminar estacionamiento: {}", e.getMessage());
+            throw new RuntimeException("Error al eliminar estacionamiento: " + e.getMessage());
         }
     }
 
-    public DjangoParkingDTO updateParking(Long parkingId, DjangoParkingDTO parkingDTO, String email) {
+    public void uploadParkingImage(Long parkingId, MultipartFile image, Boolean esPrincipal, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.setBearerAuth(token);
+        
         try {
-            // Verificar propiedad primero
-            getParkingByIdAndOwner(parkingId, email);
-            return updateParkingInDjango(parkingId, parkingDTO);
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("imagen", image.getResource());
+            body.add("es_principal", esPrincipal.toString());
+            body.add("parking_lot", parkingId.toString());
+            
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+            
+            restTemplate.exchange(
+                djangoApiUrl + "/parking-images/",
+                HttpMethod.POST,
+                requestEntity,
+                Void.class
+            );
+            
+            logger.info("Imagen subida exitosamente para el estacionamiento ID: {}", parkingId);
         } catch (Exception e) {
-            throw new RuntimeException("Error al actualizar parking: " + e.getMessage());
+            logger.error("Error al subir imagen: {}", e.getMessage());
+            throw new RuntimeException("Error al subir imagen: " + e.getMessage());
         }
     }
 
-    public void deleteParking(Long parkingId, String email) {
+    public List<DjangoParkingDTO> searchParkings(String query, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
         try {
-            // Verificar propiedad primero
-            getParkingByIdAndOwner(parkingId, email);
-            deleteParkingInDjango(parkingId);
+            ResponseEntity<List<DjangoParkingDTO>> response = restTemplate.exchange(
+                djangoApiUrl + "/parking-lots/search/?q=" + query,
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<List<DjangoParkingDTO>>() {}
+            );
+            
+            return response.getBody();
         } catch (Exception e) {
-            throw new RuntimeException("Error al eliminar parking: " + e.getMessage());
+            logger.error("Error al buscar estacionamientos: {}", e.getMessage());
+            throw new RuntimeException("Error al buscar estacionamientos: " + e.getMessage());
         }
     }
 
-    public void updateAvailability(Long parkingId, Integer availableSpaces, String email) {
+    public void updateAvailability(Long parkingId, Integer availableSpaces, String token) {
         try {
-            // Verificar propiedad primero
-            DjangoParkingDTO currentParking = getParkingByIdAndOwner(parkingId, email);
+            DjangoParkingDTO currentParking = getParkingById(parkingId, token);
             currentParking.setPlazasDisponibles(availableSpaces);
-            updateParkingInDjango(parkingId, currentParking);
+            updateParking(parkingId, currentParking, token);
+            logger.info("Disponibilidad actualizada para el estacionamiento ID {}: {} espacios", parkingId, availableSpaces);
         } catch (Exception e) {
+            logger.error("Error al actualizar disponibilidad: {}", e.getMessage());
             throw new RuntimeException("Error al actualizar disponibilidad: " + e.getMessage());
         }
-    }
-
-    // ========== MÉTODOS PRIVADOS ==========
-
-    private DjangoParkingDTO createParkingInDjango(DjangoParkingDTO parkingDTO) {
-        String url = djangoApiUrl + "/parking/";
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        HttpEntity<DjangoParkingDTO> entity = new HttpEntity<>(parkingDTO, headers);
-        
-        ResponseEntity<DjangoParkingDTO> response = restTemplate.exchange(
-            url,
-            HttpMethod.POST,
-            entity,
-            DjangoParkingDTO.class
-        );
-        
-        return response.getBody();
-    }
-
-    private DjangoParkingDTO updateParkingInDjango(Long parkingId, DjangoParkingDTO parkingDTO) {
-        String url = djangoApiUrl + "/parking/" + parkingId + "/";
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        HttpEntity<DjangoParkingDTO> entity = new HttpEntity<>(parkingDTO, headers);
-        
-        ResponseEntity<DjangoParkingDTO> response = restTemplate.exchange(
-            url,
-            HttpMethod.PUT,
-            entity,
-            DjangoParkingDTO.class
-        );
-        
-        return response.getBody();
-    }
-
-    private void deleteParkingInDjango(Long parkingId) {
-        String url = djangoApiUrl + "/parking/" + parkingId + "/";
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-        
-        restTemplate.exchange(url, HttpMethod.DELETE, entity, Void.class);
-    }
-
-    // Método temporal - necesitas implementar la lógica real
-    private Long getOwnerIdByEmail(String email) {
-        // Por ahora retornamos un ID fijo
-        // En producción, necesitas consultar tu API de Django para mapear email → ownerId
-        return 1L;
     }
 }

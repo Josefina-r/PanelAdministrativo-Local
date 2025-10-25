@@ -1,16 +1,21 @@
 package com.parkeaya.local_paneladmi.service;
 
 import com.parkeaya.local_paneladmi.model.dto.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class DashboardService {
+    private static final Logger logger = LoggerFactory.getLogger(DashboardService.class);
 
     @Value("${django.api.url}")
     private String djangoApiUrl;
@@ -24,12 +29,37 @@ public class DashboardService {
     }
 
     /**
+     * Obtiene los estacionamientos del dueño
+     */
+    public List<DjangoParkingDTO> getOwnerParkings(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
+        try {
+            ResponseEntity<List<DjangoParkingDTO>> response = restTemplate.exchange(
+                djangoApiUrl + "/api/parking/",
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<List<DjangoParkingDTO>>() {}
+            );
+            
+            return response.getBody() != null ? response.getBody() : Collections.emptyList();
+        } catch (Exception e) {
+            logger.error("Error al obtener estacionamientos: {}", e.getMessage(), e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
      * Obtiene estadísticas del dashboard para el dueño
      */
-    public OwnerDashboardStatsDTO getDashboardStats(String ownerEmail) {
+    public OwnerDashboardStatsDTO getDashboardStats(String token) {
         try {
-            // Obtener parkings del dueño
-            List<DjangoParkingDTO> ownerParkings = parkingService.getParkingsByOwnerEmail(ownerEmail);
+            // Obtener parkings del dueño usando el token JWT
+            List<DjangoParkingDTO> ownerParkings = getOwnerParkings(token);
             
             // Calcular estadísticas básicas
             OwnerDashboardStatsDTO stats = new OwnerDashboardStatsDTO();
@@ -37,13 +67,13 @@ public class DashboardService {
             stats.setTotalSpaces(ownerParkings.stream().mapToInt(p -> p.getTotalPlazas() != null ? p.getTotalPlazas() : 0).sum());
             stats.setAvailableSpaces(ownerParkings.stream().mapToInt(p -> p.getPlazasDisponibles() != null ? p.getPlazasDisponibles() : 0).sum());
             
-            // Calcular métricas adicionales
-            stats.setActiveReservations(calculateActiveReservations(ownerParkings));
-            stats.setTodayRevenue(calculateTodayRevenue(ownerParkings));
-            stats.setMonthlyRevenue(calculateMonthlyRevenue(ownerParkings));
+            // Obtener métricas desde la API
+            stats.setActiveReservations(getActiveReservationsCount(token));
+            stats.setTodayRevenue(getTodayRevenue(token));
+            stats.setMonthlyRevenue(getMonthlyRevenue(token));
             
             // Obtener reservas recientes
-            stats.setRecentReservations(getRecentReservations(ownerEmail));
+            stats.setRecentReservations(getRecentReservations(token));
             
             // Estadísticas por parking
             stats.setParkingStats(calculateParkingStats(ownerParkings));
@@ -51,54 +81,98 @@ public class DashboardService {
             return stats;
             
         } catch (Exception e) {
-            System.err.println("Error en getDashboardStats: " + e.getMessage());
+            logger.error("Error al obtener estadísticas del dashboard: {}", e.getMessage(), e);
             return createDefaultStats();
         }
     }
 
     /**
-     * Obtiene reservas recientes para el dueño
+     * Obtiene reservas recientes
      */
-    public List<RecentReservationDTO> getRecentReservations(String ownerEmail) {
+    public List<RecentReservationDTO> getRecentReservations(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
         try {
-            // Datos de ejemplo temporalmente
-            return Arrays.asList(
-                createMockReservation(1L, "Juan Pérez", "Parking Central", "confirmada"),
-                createMockReservation(2L, "María García", "Parking Norte", "activa"),
-                createMockReservation(3L, "Carlos López", "Parking Sur", "completada")
+            ResponseEntity<List<RecentReservationDTO>> response = restTemplate.exchange(
+                djangoApiUrl + "/reservations/recent/",
+                HttpMethod.GET,
+                request,
+                new ParameterizedTypeReference<List<RecentReservationDTO>>() {}
             );
+            
+            return response.getBody();
         } catch (Exception e) {
+            logger.error("Error al obtener reservas recientes: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
 
-    /**
-     * Obtiene los parkings del dueño
-     */
-    public List<DjangoParkingDTO> getOwnerParkings(String ownerEmail) {
-        return parkingService.getParkingsByOwnerEmail(ownerEmail);
-    }
-
     // ========== MÉTODOS PRIVADOS AUXILIARES ==========
 
-    private Integer calculateActiveReservations(List<DjangoParkingDTO> parkings) {
-        return parkings.stream()
-            .mapToInt(p -> (int) ((p.getPlazasDisponibles() != null ? p.getPlazasDisponibles() : 0) * 0.3))
-            .sum();
+    private Integer getActiveReservationsCount(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
+        try {
+            ResponseEntity<Integer> response = restTemplate.exchange(
+                djangoApiUrl + "/reservations/active/count/",
+                HttpMethod.GET,
+                request,
+                Integer.class
+            );
+            
+            return response.getBody() != null ? response.getBody() : 0;
+        } catch (Exception e) {
+            logger.error("Error al obtener conteo de reservas activas: {}", e.getMessage(), e);
+            return 0;
+        }
     }
 
-    private BigDecimal calculateTodayRevenue(List<DjangoParkingDTO> parkings) {
-        return parkings.stream()
-            .map(parking -> {
-                BigDecimal price = parking.getPrecioHora() != null ? parking.getPrecioHora() : BigDecimal.ZERO;
-                Integer spaces = parking.getTotalPlazas() != null ? parking.getTotalPlazas() : 0;
-                return price.multiply(BigDecimal.valueOf(spaces * 0.4));
-            })
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private BigDecimal getTodayRevenue(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
+        try {
+            ResponseEntity<BigDecimal> response = restTemplate.exchange(
+                djangoApiUrl + "/reservations/revenue/today/",
+                HttpMethod.GET,
+                request,
+                BigDecimal.class
+            );
+            
+            return response.getBody() != null ? response.getBody() : BigDecimal.ZERO;
+        } catch (Exception e) {
+            logger.error("Error al obtener ingresos del día: {}", e.getMessage(), e);
+            return BigDecimal.ZERO;
+        }
     }
 
-    private BigDecimal calculateMonthlyRevenue(List<DjangoParkingDTO> parkings) {
-        return calculateTodayRevenue(parkings).multiply(BigDecimal.valueOf(30));
+    private BigDecimal getMonthlyRevenue(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        
+        try {
+            ResponseEntity<BigDecimal> response = restTemplate.exchange(
+                djangoApiUrl + "/reservations/revenue/monthly/",
+                HttpMethod.GET,
+                request,
+                BigDecimal.class
+            );
+            
+            return response.getBody() != null ? response.getBody() : BigDecimal.ZERO;
+        } catch (Exception e) {
+            logger.error("Error al obtener ingresos mensuales: {}", e.getMessage(), e);
+            return BigDecimal.ZERO;
+        }
     }
 
     private List<ParkingStatsDTO> calculateParkingStats(List<DjangoParkingDTO> parkings) {
@@ -118,26 +192,6 @@ public class DashboardService {
             
             return stats;
         }).collect(java.util.stream.Collectors.toList());
-    }
-
-    private RecentReservationDTO createMockReservation(Long id, String userName, String parkingName, String estado) {
-        RecentReservationDTO reservation = new RecentReservationDTO();
-        reservation.setId(id);
-        
-        UserDTO user = new UserDTO();
-        user.setId(1L);
-        user.setUsername(userName);
-        reservation.setUser(user);
-        
-        ParkingDTO parking = new ParkingDTO();
-        parking.setId(1L);
-        parking.setNombre(parkingName);
-        reservation.setParking(parking);
-        
-        reservation.setEstado(estado);
-        reservation.setReservationDate(new Date());
-        
-        return reservation;
     }
 
     private OwnerDashboardStatsDTO createDefaultStats() {

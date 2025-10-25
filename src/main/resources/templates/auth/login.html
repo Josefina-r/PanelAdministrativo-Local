@@ -54,10 +54,7 @@
                         </div>
 
                         <!-- Formulario de Login -->
-                        <form th:action="@{/login}" method="post">
-                            <!-- CSRF Token -->
-                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-
+                        <form th:action="@{/do-login}" method="post">
                             <div class="mb-3">
                                 <label class="form-label">Usuario o Email</label>
                                 <div class="input-group">
@@ -83,11 +80,7 @@
                             </div>
                         </form>
 
-                        <div class="text-center mt-4">
-                            <small class="text-muted">
-                                Backend conectado – <strong>ParkeaYa</strong>
-                            </small>
-                        </div>
+                        
                     </div>
                 </div>
             </div>
