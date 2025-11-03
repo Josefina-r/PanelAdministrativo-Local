@@ -1,14 +1,9 @@
 package com.parkeaya.local_paneladmi.model.enums;
 
-
 public enum ParkingStatus {
-    PENDING, APPROVED, REJECTED, SUSPENDED, ACTIVE, INACTIVE
+    PENDING_APPROVAL,    // Pendiente de aprobación
+    ACTIVE,              // Activo y visible
+    INACTIVE,            // Inactivo temporalmente
+    REJECTED,            // Rechazado por administrador
+    SUSPENDED            // Suspendido por incumplimiento
 }
-
-/**public enum ReservationStatus {
-    PENDING, CONFIRMED, ACTIVE, COMPLETED, CANCELLED, NO_SHOW
-}
-
-public enum PaymentStatus {
-    PENDING, COMPLETED, FAILED, REFUNDED
-}**/

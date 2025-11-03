@@ -1,0 +1,159 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-users me-2 text-primary"></i>Gestión de Usuarios</h5>
+                <button class="btn btn-primary" id="addUserBtn"><i class="fas fa-user-plus me-1"></i>Nuevo Usuario</button>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-striped table-hover" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Staff</th>
+                            <th>Superuser</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar usuario -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nuevo Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control bg-secondary text-light" id="nombre" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control bg-secondary text-light" id="email" required>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="isStaff">
+                        <label class="form-check-label" for="isStaff">Staff</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="isSuperuser">
+                        <label class="form-check-label" for="isSuperuser">Superuser</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="saveUserBtn">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const apiUrl = '/api/users';
+
+async function fetchUsers() {
+    const res = await fetch(apiUrl);
+    const users = await res.json();
+    const tbody = document.querySelector('#usersTable tbody');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${u.id}</td>
+                <td>${u.nombre}</td>
+                <td>${u.email}</td>
+                <td>${u.staff ? 'Sí' : 'No'}</td>
+                <td>${u.superuser ? 'Sí' : 'No'}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editUser(${u.id})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Eliminar</button>
+                </td>
+            </tr>`;
+    });
+}
+
+async function saveUser(e) {
+    e.preventDefault();
+    const id = document.getElementById('userId').value;
+    const user = {
+        nombre: document.getElementById('nombre').value,
+        email: document.getElementById('email').value,
+        staff: document.getElementById('isStaff').checked,
+        superuser: document.getElementById('isSuperuser').checked
+    };
+    if(id) {
+        await fetch(`${apiUrl}/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(user)});
+    } else {
+        await fetch(apiUrl, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(user)});
+    }
+    document.getElementById('userForm').reset();
+    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+    fetchUsers();
+}
+
+async function editUser(id) {
+    const res = await fetch(`${apiUrl}/${id}`);
+    const u = await res.json();
+    document.getElementById('userId').value = u.id;
+    document.getElementById('nombre').value = u.nombre;
+    document.getElementById('email').value = u.email;
+    document.getElementById('isStaff').checked = u.staff;
+    document.getElementById('isSuperuser').checked = u.superuser;
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+}
+
+async function deleteUser(id) {
+    if(confirm('¿Desea eliminar este usuario?')) {
+        await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+        fetchUsers();
+    }
+}
+
+document.getElementById('addUserBtn').addEventListener('click', () => {
+    document.getElementById('userForm').reset();
+    document.getElementById('userId').value = '';
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+});
+
+document.getElementById('userForm').addEventListener('submit', saveUser);
+
+fetchUsers();
+</script>
+
+<style>
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+.table-dark th, .table-dark td {
+    border-color: #333;
+}
+.card {
+    background-color: #1f1f1f;
+}
+.modal-content {
+    background-color: #1f1f1f;
+}
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+}
+.btn-warning {
+    background-color: #ffc107;
+    border: none;
+}
+.btn-danger {
+    background-color: #dc3545;
+    border: none;
+}
+</style>

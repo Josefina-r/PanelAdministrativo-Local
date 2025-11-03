@@ -1,4 +1,4 @@
-package com.parkeaya.local_paneladmi.Config;
+package com.parkeaya.local_paneladmi.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

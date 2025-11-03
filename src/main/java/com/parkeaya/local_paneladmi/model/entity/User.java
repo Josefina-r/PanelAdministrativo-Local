@@ -1,24 +1,38 @@
-package com.parkeaya.local_paneladmi.model.dto;
+package com.parkeaya.local_paneladmi.model.entity;
 
-public class UserDTO {
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "nombre", nullable = false, length = 100)
     private String nombre;
-    private String username;
+
+    @Column(name = "email", nullable = false, length = 150)
     private String email;
+
+    @Column(name = "is_staff")
     private boolean isStaff;
+
+    @Column(name = "is_superuser")
     private boolean isSuperuser;
 
     // Constructores
-    public UserDTO() {}
+    public User() {}
 
-    public UserDTO(Long id, String nombre, String username, String email, boolean isStaff, boolean isSuperuser) {
-        this.id = id;
+    public User(String nombre, String email) {
         this.nombre = nombre;
-        this.username = username;
         this.email = email;
-        this.isStaff = isStaff;
-        this.isSuperuser = isSuperuser;
     }
 
     // Getters y Setters
@@ -27,9 +41,6 @@ public class UserDTO {
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

@@ -1,0 +1,185 @@
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center bg-primary text-light">
+                <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>Gestión de Pagos</h5>
+                <button class="btn btn-light" id="addPaymentBtn"><i class="fas fa-plus me-1"></i>Nuevo Pago</button>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover table-dark" id="paymentsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar pago -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nuevo Pago</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <input type="hidden" id="paymentId">
+                    <div class="mb-3">
+                        <label for="usuario" class="form-label">Usuario</label>
+                        <input type="text" class="form-control bg-secondary text-light" id="usuario" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto</label>
+                        <input type="number" step="0.01" class="form-control bg-secondary text-light" id="monto" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="metodoPago" class="form-label">Método de Pago</label>
+                        <select class="form-select bg-secondary text-light" id="metodoPago">
+                            <option value="Efectivo">Efectivo</option>
+                            <option value="Tarjeta">Tarjeta</option>
+                            <option value="Yape">Yape</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="estado" class="form-label">Estado</label>
+                        <select class="form-select bg-secondary text-light" id="estado">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="Completado">Completado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="savePaymentBtn">Guardar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const apiUrl = '/api/payments';
+
+async function fetchPayments() {
+    const res = await fetch(apiUrl);
+    const payments = await res.json();
+    const tbody = document.querySelector('#paymentsTable tbody');
+    tbody.innerHTML = '';
+    payments.forEach(p => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${p.id}</td>
+                <td>${p.usuario}</td>
+                <td>${p.monto.toFixed(2)}</td>
+                <td>${p.metodoPago}</td>
+                <td>${new Date(p.fecha).toLocaleString()}</td>
+                <td>${p.estado}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editPayment(${p.id})">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="deletePayment(${p.id})">Eliminar</button>
+                </td>
+            </tr>`;
+    });
+}
+
+async function savePayment(e) {
+    e.preventDefault();
+    const id = document.getElementById('paymentId').value;
+    const payment = {
+        usuario: document.getElementById('usuario').value,
+        monto: parseFloat(document.getElementById('monto').value),
+        metodoPago: document.getElementById('metodoPago').value,
+        estado: document.getElementById('estado').value,
+        fecha: new Date().toISOString()
+    };
+
+    if(id) {
+        await fetch(`${apiUrl}/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payment)
+        });
+    } else {
+        await fetch(apiUrl, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payment)
+        });
+    }
+    document.getElementById('paymentForm').reset();
+    bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+    fetchPayments();
+}
+
+async function editPayment(id) {
+    const res = await fetch(`${apiUrl}/${id}`);
+    const p = await res.json();
+    document.getElementById('paymentId').value = p.id;
+    document.getElementById('usuario').value = p.usuario;
+    document.getElementById('monto').value = p.monto;
+    document.getElementById('metodoPago').value = p.metodoPago;
+    document.getElementById('estado').value = p.estado;
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+}
+
+async function deletePayment(id) {
+    if(confirm('¿Desea eliminar este pago?')) {
+        await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+        fetchPayments();
+    }
+}
+
+document.getElementById('addPaymentBtn').addEventListener('click', () => {
+    document.getElementById('paymentForm').reset();
+    document.getElementById('paymentId').value = '';
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+});
+
+document.getElementById('paymentForm').addEventListener('submit', savePayment);
+
+fetchPayments();
+</script>
+
+<style>
+body {
+    background-color: #0b1f3f;
+    color: #e0e0e0;
+}
+.card {
+    background-color: #142850;
+    border: none;
+    border-radius: 12px;
+}
+.card-header {
+    font-weight: 600;
+}
+.table-dark th, .table-dark td {
+    border-color: #1f2a48;
+}
+.modal-content {
+    background-color: #142850;
+}
+.btn-primary {
+    background-color: #1e90ff;
+    border: none;
+}
+.btn-warning {
+    background-color: #ffb703;
+    border: none;
+    color: #000;
+}
+.btn-danger {
+    background-color: #e63946;
+    border: none;
+}
+</style>

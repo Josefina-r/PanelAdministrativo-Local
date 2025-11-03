@@ -10,9 +10,12 @@ import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.Duration;
 import java.util.Map;
+import java.security.Principal;
 import org.springframework.core.ParameterizedTypeReference;
 
 @Service
@@ -22,6 +25,9 @@ public class AuthService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Almacenamiento simple en memoria para el token (para desarrollo)
+    private String currentUserToken;
 
     public AuthService(RestTemplateBuilder builder) {
         // Añadimos timeouts cortos para fallar rápido y evitar bloqueos largos
@@ -34,7 +40,7 @@ public class AuthService {
     }
 
     public String authenticate(String username, String password) {
-        String url = "http://localhost:8000/api/admin-login/"; 
+        String url = "http://localhost:8000/api/users/admin-login/"; 
         Map<String, String> requestBody = Map.of(
                 "username", username,
                 "password", password
@@ -82,7 +88,9 @@ public class AuthService {
                 
                 if (token != null) {
                     logger.info("Autenticación exitosa para usuario '{}'", username);
-                    return token.toString();
+                    // Guardar el token para uso posterior
+                    this.currentUserToken = token.toString();
+                    return this.currentUserToken;
                 } else {
                     logger.warn("Respuesta 2xx pero sin token en ningún campo conocido. Body: {}", response.getBody());
                     throw new RuntimeException("Respuesta sin token de autenticación");
@@ -98,5 +106,101 @@ public class AuthService {
             logger.error("Error inesperado al conectar con Django: {}", e.getMessage(), e);
             throw new RuntimeException("Error al conectar con Django: " + e.getMessage());
         }
+    }
+
+    /**
+     * Obtiene el token del usuario actualmente autenticado
+     * Versión simplificada sin OAuth2
+     */
+    public String getCurrentUserToken(Principal principal) {
+        if (principal == null) {
+            throw new IllegalStateException("No hay usuario autenticado");
+        }
+
+        try {
+            logger.debug("Obteniendo token para usuario: {}", principal.getName());
+            
+            // Opción 1: Usar el token almacenado en memoria (para desarrollo)
+            if (this.currentUserToken != null) {
+                logger.debug("Token obtenido de almacenamiento en memoria");
+                return this.currentUserToken;
+            }
+            
+            // Opción 2: Intentar obtener de SecurityContext
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getCredentials() instanceof String) {
+                String token = (String) authentication.getCredentials();
+                logger.debug("Token obtenido de SecurityContext credentials");
+                return token;
+            }
+            
+            // Opción 3: Intentar obtener de los detalles de autenticación
+            if (authentication != null && authentication.getDetails() instanceof String) {
+                String token = (String) authentication.getDetails();
+                logger.debug("Token obtenido de SecurityContext details");
+                return token;
+            }
+            
+            // Opción 4: Si el nombre del principal es un token (fallback simple)
+            if (principal.getName() != null && principal.getName().length() > 20) {
+                logger.debug("Usando nombre del principal como token (fallback)");
+                return principal.getName();
+            }
+            
+            // Si no se puede obtener el token, lanzar excepción
+            throw new IllegalStateException("No se pudo obtener el token del usuario autenticado. " +
+                "El usuario necesita autenticarse primero.");
+            
+        } catch (Exception e) {
+            logger.error("Error al obtener el token del usuario: {}", e.getMessage());
+            throw new IllegalStateException("Error al obtener el token: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Almacena el token para el usuario actual (para sesiones simples)
+     */
+    public void setCurrentUserToken(String token) {
+        this.currentUserToken = token;
+        logger.debug("Token almacenado en AuthService");
+    }
+
+    /**
+     * Limpia el token actual (para logout)
+     */
+    public void clearCurrentUserToken() {
+        this.currentUserToken = null;
+        logger.debug("Token eliminado de AuthService");
+    }
+
+    /**
+     * Obtiene el email del usuario actualmente autenticado
+     */
+    public String getCurrentUserEmail(Principal principal) {
+        if (principal == null) {
+            throw new IllegalStateException("No hay usuario autenticado");
+        }
+
+        try {
+            // En una implementación simple, el nombre del principal puede ser el email
+            return principal.getName();
+            
+        } catch (Exception e) {
+            throw new IllegalStateException("Error al obtener el email del usuario: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Verifica si el usuario actual está autenticado
+     */
+    public boolean isAuthenticated(Principal principal) {
+        return principal != null && this.currentUserToken != null;
+    }
+
+    /**
+     * Verifica la validez del token actual
+     */
+    public boolean isTokenValid() {
+        return this.currentUserToken != null && !this.currentUserToken.trim().isEmpty();
     }
 }

@@ -1,5 +1,5 @@
 package com.parkeaya.local_paneladmi.controller;
 
-public class ReservationController {
+public class ViolationsController {
     
 }

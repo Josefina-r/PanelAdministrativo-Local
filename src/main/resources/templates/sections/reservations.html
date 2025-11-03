@@ -1,0 +1,165 @@
+<div class="content">
+    <style>
+        /* =======================
+           Estilos Reservas
+        ======================= */
+        .reservations-card {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(2,6,23,0.7);
+            color: #f8fafc;
+            transition: all 0.3s ease;
+        }
+        .reservations-card:hover {
+            box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+        }
+        .reservations-card .card-header {
+            background: #111827;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            font-weight: 600;
+            color: #3b82f6;
+        }
+
+        .table-dark th, .table-dark td {
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(59,130,246,0.1);
+        }
+
+        .badge {
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        .bg-success { background-color: rgba(16,185,129,0.2) !important; color: #10b981 !important; }
+        .bg-warning { background-color: rgba(245,158,11,0.2) !important; color: #f59e0b !important; }
+        .bg-danger  { background-color: rgba(239,68,68,0.15) !important; color: #ef4444 !important; }
+
+        .btn-outline-primary {
+            color: #3b82f6;
+            border-color: rgba(59,130,246,0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-outline-primary:hover {
+            background: rgba(59,130,246,0.1);
+            color: #f8fafc;
+            border-color: rgba(59,130,246,0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline-danger {
+            color: #ef4444;
+            border-color: rgba(239,68,68,0.3);
+        }
+        .btn-outline-danger:hover {
+            background: rgba(239,68,68,0.1);
+            color: #f8fafc;
+            border-color: rgba(239,68,68,0.5);
+            transform: translateY(-1px);
+        }
+
+        .text-light { color: #f8fafc !important; }
+        .text-muted { color: rgba(255,255,255,0.6) !important; }
+
+        /* Responsivo tabla */
+        @media (max-width: 767px) {
+            .table-responsive { overflow-x: auto; }
+        }
+    </style>
+
+    <!-- Encabezado de sección -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-light"><i class="fas fa-calendar-check me-2"></i>Gestión de Reservas</h2>
+        <button class="btn btn-primary" id="refreshReservations">
+            <i class="fas fa-sync-alt me-1"></i>Actualizar
+        </button>
+    </div>
+
+    <!-- Tabla de reservas -->
+    <div class="card reservations-card">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead class="bg-dark text-muted">
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Estacionamiento</th>
+                        <th>Fecha / Hora</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="reservationsTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">Cargando reservas...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadReservations() {
+        const tbody = document.getElementById('reservationsTableBody');
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Cargando reservas...</td></tr>`;
+
+        try {
+            const response = await fetch('/api/reservations'); // Ajusta a tu endpoint
+            const data = await response.json();
+
+            if (!data.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">No hay reservas</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            data.forEach(reservation => {
+                const tr = document.createElement('tr');
+
+                tr.innerHTML = `
+                    <td>${reservation.id}</td>
+                    <td>${reservation.user.nombre}</td>
+                    <td>${reservation.parking.nombre}</td>
+                    <td>${new Date(reservation.dateTime).toLocaleString()}</td>
+                    <td>
+                        <span class="badge ${
+                            reservation.status === 'Confirmado' ? 'bg-success' :
+                            reservation.status === 'Pendiente' ? 'bg-warning' :
+                            'bg-danger'
+                        }">${reservation.status}</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editReservation(${reservation.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteReservation(${reservation.id})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Error cargando reservas</td></tr>`;
+            console.error(error);
+        }
+    }
+
+    document.getElementById('refreshReservations').addEventListener('click', loadReservations);
+
+    function editReservation(id) {
+        alert('Editar reserva ' + id);
+    }
+
+    function deleteReservation(id) {
+        if (confirm('¿Seguro que deseas eliminar esta reserva?')) {
+            alert('Eliminar reserva ' + id);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadReservations);
+</script>

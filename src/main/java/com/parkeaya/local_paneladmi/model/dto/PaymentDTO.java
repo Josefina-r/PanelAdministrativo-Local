@@ -1,41 +1,20 @@
-package com.parkeaya.local_paneladmi.model.entity;
+package com.parkeaya.local_paneladmi.model.dto;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+public class PaymentDTO {
 
-@Entity
-@Table(name = "payments")
-public class Payment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "usuario", nullable = false)
     private String usuario;
-
-    @Column(name = "monto", nullable = false)
     private Double monto;
-
-    @Column(name = "metodo_pago", nullable = false)
     private String metodoPago;
-
-    @Column(name = "fecha", nullable = false)
     private LocalDateTime fecha;
-
-    @Column(name = "estado", nullable = false)
     private String estado;
 
-    // Constructores
-    public Payment() {}
+    public PaymentDTO() {}
 
-    public Payment(String usuario, Double monto, String metodoPago, LocalDateTime fecha, String estado) {
+    public PaymentDTO(Long id, String usuario, Double monto, String metodoPago, LocalDateTime fecha, String estado) {
+        this.id = id;
         this.usuario = usuario;
         this.monto = monto;
         this.metodoPago = metodoPago;

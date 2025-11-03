@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle}">Dashboard - ParkeYa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #38bdf8;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f8fafc;
+            --muted: #94a3b8;
+            --card-bg: #1e293b;
+            --sidebar-bg: #111827;
+            --border: rgba(255,255,255,0.08);
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--light);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar {
+            background: var(--sidebar-bg);
+            min-height: calc(100vh - 56px);
+            border-right: 1px solid var(--border);
+            box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+        }
+
+        .sidebar .nav-link {
+            color: var(--muted);
+            padding: 12px 16px;
+            margin: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .sidebar .nav-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--light);
+            transform: translateX(4px);
+        }
+
+        .sidebar .nav-link.active {
+            background: linear-gradient(90deg, rgba(59,130,246,0.15), rgba(29,78,216,0.08));
+            color: var(--light);
+            box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+            border-left: 3px solid var(--primary);
+        }
+
+        .sidebar .nav-link i {
+            width: 20px;
+            margin-right: 10px;
+            color: var(--primary);
+        }
+
+        .main-content {
+            padding: 20px;
+            background: transparent;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--light);
+            box-shadow: 0 8px 24px rgba(2,6,23,0.7);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-2px);
+        }
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+            border: none;
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--sidebar-bg) 100%);
+        }
+
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 6px;
+            background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+            opacity: 0.95;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
+        }
+
+        .stat-card .card-body {
+            padding: 20px;
+        }
+
+        .stat-icon {
+            font-size: 2.2rem;
+            opacity: 0.9;
+            background: rgba(255,255,255,0.05);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover .stat-icon {
+            transform: scale(1.1);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+            box-shadow: 0 6px 18px rgba(59,130,246,0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59,130,246,0.3);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary);
+            border-color: rgba(59,130,246,0.3);
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline-primary:hover {
+            background: rgba(59,130,246,0.1);
+            color: var(--light);
+            border-color: rgba(59,130,246,0.5);
+            transform: translateY(-1px);
+        }
+
+        .text-primary { color: var(--primary) !important; }
+        .text-success { color: var(--success) !important; }
+        .text-warning { color: var(--warning) !important; }
+        .text-info { color: var(--info) !important; }
+        .text-danger { color: var(--danger) !important; }
+        .text-muted { color: var(--muted) !important; }
+
+        .badge {
+            color: var(--light);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-weight: 500;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+
+        .badge.bg-success {
+            background: rgba(16,185,129,0.2) !important;
+            color: var(--success) !important;
+            border-color: rgba(16,185,129,0.3);
+        }
+
+        .badge.bg-primary {
+            background: rgba(59,130,246,0.2) !important;
+            color: var(--primary) !important;
+            border-color: rgba(59,130,246,0.3);
+        }
+
+        .badge.bg-warning {
+            background: rgba(245,158,11,0.2) !important;
+            color: var(--warning) !important;
+            border-color: rgba(245,158,11,0.3);
+        }
+
+        .badge.bg-danger {
+            background: rgba(239,68,68,0.15) !important;
+            color: var(--danger) !important;
+            border-color: rgba(239,68,68,0.3);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-card {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1) 0%, rgba(29,78,216,0.05) 100%);
+            border: 1px solid rgba(59,130,246,0.2);
+        }
+
+        /* Estilos para ocupación */
+        .occupation-bar {
+            height: 12px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .occupation-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        
+        .occupation-distribution {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .distribution-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .distribution-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .distribution-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .distribution-value {
+            font-weight: 600;
+        }
+
+        .loading-placeholder {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        /* Estilos para Settings */
+        .settings-container {
+            background: transparent;
+        }
+
+        .settings-section {
+            margin-bottom: 2rem;
+        }
+
+        .settings-section .card-header {
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .form-control, .form-select {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--light);
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--primary);
+            color: var(--light);
+            box-shadow: 0 0 0 0.2rem rgba(59,130,246,0.25);
+        }
+
+        .form-label {
+            color: var(--light);
+            font-weight: 500;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        @media (max-width: 767px) {
+            .sidebar {
+                position: fixed;
+                z-index: 1050;
+                width: 280px;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1040;
+                display: none;
+            }
+            
+            .overlay.show {
+                display: block;
+            }
+        }
+    </style>
+    <script defer src="/js/dashboard-initializer.js"></script>
+</head>
+<body>
+    <!-- Añadir contenedor para errores -->
+    <div id="dashboard-error" class="alert alert-danger" style="display: none;"></div>
+
+    <div class="overlay"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#" id="dashboard-brand">
+                <i class="fas fa-parking me-2"></i>Parking
+            </a>
+            
+            <button class="btn btn-outline-secondary d-md-none sidebar-toggle" type="button">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle me-2"></i>
+                        <div class="text-start">
+                            <div class="fw-semibold" id="username" th:text="${username}">Usuario</div>
+                            <small class="text-muted">Propietario</small>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Mi Perfil</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2 sidebar p-0">
+                <div class="position-sticky pt-3">
+                    <div class="p-3 text-center border-bottom border-secondary mb-3">
+                        <h6 class="mb-0">PANEL DE CONTROL</h6>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-section="dashboard">
+                                <i class="fas fa-chart-line"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="reservations">
+                                <i class="fas fa-calendar-check"></i>Gestión de Reservas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="users">
+                                <i class="fas fa-users"></i>Gestión de Usuarios
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="payments">
+                                <i class="fas fa-credit-card"></i>Gestión de Pagos
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="violations">
+                                <i class="fas fa-exclamation-triangle"></i>Infracciones
+                            </a>
+                        </li>
+                        <!-- ✅ SECCIÓN: Configuración -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="settings">
+                                <i class="fas fa-cog"></i>Configuración
+                            </a>
+                        </li>
+                        <li class="nav-item mt-4 pt-3 border-top border-secondary">
+                            <a class="nav-link text-danger" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i>Cerrar Sesión
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="col-md-9 col-lg-10 main-content fade-in" id="dynamic-content">
+                <!-- Contenido del Dashboard (por defecto) -->
+                <div id="dashboard-content">
+                    <!-- Mensaje de error -->
+                    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span th:text="${error}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-4 mb-4 border-bottom border-secondary">
+                        <h1 class="h2 fw-bold">Dashboard</h1>
+                        <div class="btn-toolbar mb-2 mb-md-0">
+                            <button class="btn btn-primary" id="refreshBtn">
+                                <i class="fas fa-sync-alt me-2"></i>Actualizar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cards de estadísticas -->
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-muted mb-2">ESTACIONAMIENTOS</h6>
+                                            <h2 class="text-primary mb-1" id="totalParkings" th:text="${stats?.totalParkings ?: 0}">0</h2>
+                                            <small class="text-muted">Total registrados</small>
+                                        </div>
+                                        <div class="stat-icon text-primary">
+                                            <i class="fas fa-parking"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-muted mb-2">ESPACIOS TOTALES</h6>
+                                            <h2 class="text-warning mb-1" id="totalSpaces" th:text="${stats?.totalSpaces ?: 0}">0</h2>
+                                            <small class="text-muted">Capacidad total</small>
+                                        </div>
+                                        <div class="stat-icon text-warning">
+                                            <i class="fas fa-layer-group"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-muted mb-2">DISPONIBLES</h6>
+                                            <h2 class="text-success mb-1" id="availableSpaces" th:text="${stats?.availableSpaces ?: 0}">0</h2>
+                                            <small class="text-muted">Espacios libres</small>
+                                        </div>
+                                        <div class="stat-icon text-success">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <div class="card stat-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="card-title text-muted mb-2">RESERVAS ACTIVAS</h6>
+                                            <h2 class="text-info mb-1" id="activeReservations" th:text="${stats?.activeReservations ?: 0}">0</h2>
+                                            <small class="text-muted">Reservas hoy</small>
+                                        </div>
+                                        <div class="stat-icon text-info">
+                                            <i class="fas fa-calendar-check"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información del usuario -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card welcome-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <h4 class="mb-2">Bienvenido, <span th:text="${username}">Usuario</span></h4>
+                                            <p class="mb-0" id="welcomeMessage">
+                                                <span th:if="${stats?.activeReservations == 0}" class="text-warning fw-bold">
+                                                    No tienes reservas activas para hoy.
+                                                </span>
+                                                <span th:if="${stats?.activeReservations > 0}">
+                                                    Tienes <strong th:text="${stats.activeReservations}"></strong> reserva(s) activa(s) para hoy.
+                                                </span>
+                                                <span th:if="${stats?.totalParkings > 0}">
+                                                    Tu estacionamiento cuenta con <strong th:text="${stats.totalSpaces}"></strong> espacios totales.
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            <a href="#" class="btn btn-primary me-2" data-section="reservations">
+                                                <i class="fas fa-calendar-check me-1"></i>Gestionar Reservas
+                                            </a>
+                                            <a href="#" class="btn btn-outline-primary" data-section="settings">
+                                                <i class="fas fa-cog me-1"></i>Configuración
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección: Ocupación y Reservas -->
+                    <div class="row mb-4">
+                        <!-- Ocupación Actual -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center border-bottom border-secondary">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-chart-pie text-primary me-2"></i>Ocupación Actual
+                                    </h5>
+                                    <span class="badge bg-primary" id="occupationBadge">
+                                        <span th:text="${stats?.occupiedSpaces ?: 0}">0</span> / <span th:text="${stats?.totalSpaces ?: 0}">0</span> espacios
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="occupation-bar">
+                                        <div class="occupation-fill bg-primary" id="occupationFill" 
+                                             th:style="'width: ' + ${stats?.totalSpaces > 0 ? (stats.occupiedSpaces ?: 0) / stats.totalSpaces * 100 : 0} + '%;'">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Ocupados: <span th:text="${stats?.occupiedSpaces ?: 0}">0</span></span>
+                                        <span class="text-muted">Disponibles: <span th:text="${stats?.availableSpaces ?: 0}">0</span></span>
+                                    </div>
+                                    
+                                    <h6 class="mt-4 mb-3">Distribución de Ocupación</h6>
+                                    <div class="occupation-distribution">
+                                        <div class="distribution-item">
+                                            <div class="distribution-label">
+                                                <div class="distribution-color bg-success"></div>
+                                                <span>Libres</span>
+                                            </div>
+                                            <span class="distribution-value" th:text="${stats?.availableSpaces ?: 0}">0</span>
+                                        </div>
+                                        <div class="distribution-item">
+                                            <div class="distribution-label">
+                                                <div class="distribution-color bg-warning"></div>
+                                                <span>Reservados</span>
+                                            </div>
+                                            <span class="distribution-value" th:text="${stats?.activeReservations ?: 0}">0</span>
+                                        </div>
+                                        <div class="distribution-item">
+                                            <div class="distribution-label">
+                                                <div class="distribution-color bg-primary"></div>
+                                                <span>Ocupados</span>
+                                            </div>
+                                            <span class="distribution-value" th:text="${stats?.occupiedSpaces ?: 0}">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reservas Activas -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center border-bottom border-secondary">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-calendar-alt text-success me-2"></i>Reservas Activas
+                                    </h5>
+                                    <span class="badge bg-success" id="reservationsBadge">
+                                        <span th:text="${stats?.activeReservations ?: 0}">0</span> hoy
+                                    </span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <h4 class="mb-0 text-success" th:text="${stats?.activeReservations ?: 0}">0</h4>
+                                        <span class="text-muted" id="reservationsChange">+0 que ayer</span>
+                                    </div>
+                                    <p class="text-muted mb-4">Reservas activas para el día de hoy</p>
+                                    
+                                    <h6 class="mb-3">Próximas Reservas</h6>
+                                    <div id="upcomingReservations">
+                                        <div th:if="${recentReservations != null and !recentReservations.empty}">
+                                            <div th:each="reservation : ${recentReservations}" 
+                                                 class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                                                <div>
+                                                    <i class="fas fa-clock text-warning me-2"></i>
+                                                    <span th:text="${reservation.time}">10:30 AM</span>
+                                                </div>
+                                                <span class="text-muted" th:text="${reservation.user}">Usuario</span>
+                                            </div>
+                                        </div>
+                                        <div th:if="${recentReservations == null or recentReservations.empty}">
+                                            <p class="text-muted text-center">No hay reservas próximas</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Navegación SPA (Single Page Application)
+        document.addEventListener('DOMContentLoaded', function() {
+            const dynamicContent = document.getElementById('dynamic-content');
+            const dashboardContent = document.getElementById('dashboard-content');
+            const dashboardBrand = document.getElementById('dashboard-brand');
+            
+            // Sidebar responsive
+            const sidebarToggle = document.querySelector('.sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.overlay');
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+                document.body.style.overflow = sidebar.classList.contains('show') ? 'hidden' : '';
+            }
+            
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', toggleSidebar);
+            }
+
+            // Navegación entre secciones
+            document.querySelectorAll('.nav-link[data-section]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const section = this.getAttribute('data-section');
+                    
+                    // Actualizar clase activa
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Cargar sección
+                    loadSection(section);
+                    
+                    // Cerrar sidebar en móviles
+                    if (window.innerWidth < 768) {
+                        toggleSidebar();
+                    }
+                });
+            });
+
+            // Botón de actualización
+            document.getElementById('refreshBtn')?.addEventListener('click', function() {
+                window.location.reload();
+            });
+
+            // Navegación desde botones
+            document.querySelectorAll('[data-section]').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    if (this.getAttribute('data-section')) {
+                        e.preventDefault();
+                        const section = this.getAttribute('data-section');
+                        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                        document.querySelector(`[data-section="${section}"]`).classList.add('active');
+                        loadSection(section);
+                    }
+                });
+            });
+
+            // Cargar sección
+            function loadSection(section) {
+                if (section === 'dashboard') {
+                    showDashboard();
+                    return;
+                }
+
+                // Mostrar loading
+                dynamicContent.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
+                        <div class="text-center">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="text-muted">Cargando ${section}...</p>
+                        </div>
+                    </div>
+                `;
+
+                // Cargar contenido de la sección
+           fetch(`/spa/${section}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            // Parsear el HTML y extraer solo el contenido necesario
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Extraer solo el contenido principal (sin layouts)
+            let content = doc.querySelector('.content') || doc.querySelector('main') || doc.body;
+            
+            dynamicContent.innerHTML = content.innerHTML;
+            
+            // Actualizar título de la página
+            updatePageTitle(section);
+            
+            // Inicializar scripts específicos de la sección
+            initializeSectionScripts(section);
+        })
+        .catch(error => {
+            console.error('Error cargando sección:', error);
+            dynamicContent.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error al cargar la sección: ${error.message}
+                </div>
+                <button class="btn btn-primary mt-2" onclick="showDashboard()">
+                    <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+                </button>
+            `;
+        })
+                    .catch(error => {
+                        console.error('Error cargando sección:', error);
+                        dynamicContent.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Error al cargar la sección: ${error.message}
+                            </div>
+                            <button class="btn btn-primary" onclick="showDashboard()">
+                                <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+                            </button>
+                        `;
+                    });
+            }
+
+            function showDashboard() {
+                dynamicContent.innerHTML = dashboardContent.innerHTML;
+                updatePageTitle('dashboard');
+                
+                // Actualizar clase activa
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelector('[data-section="dashboard"]').classList.add('active');
+            }
+
+            function updatePageTitle(section) {
+                const titles = {
+                    'dashboard': 'Dashboard - ParkeYa',
+                    'settings': 'Configuración - ParkeYa',
+                    'reservations': 'Reservaciones - ParkeYa',
+                    'users': 'Usuarios - ParkeYa',
+                    'payments': 'Pagos - ParkeYa',
+                    'violations': 'Infracciones - ParkeYa'
+                };
+                
+                document.title = titles[section] || 'ParkeYa';
+                dashboardBrand.innerHTML = `<i class="fas fa-parking me-2"></i>${titles[section]?.split(' - ')[0] || 'Parking'}`;
+            }
+
+            function initializeSectionScripts(section) {
+                // Inicializar scripts específicos para cada sección
+                switch(section) {
+                    case 'settings':
+                        initializeSettings();
+                        break;
+                    case 'reservations':
+                        // Inicializar scripts de reservaciones
+                        break;
+                    // Agregar más casos según necesites
+                }
+            }
+
+            function initializeSettings() {
+                
+                // Ejemplo: Agregar event listeners para los botones de settings
+                const backButton = document.querySelector('#back-to-dashboard');
+                if (backButton) {
+                    backButton.addEventListener('click', showDashboard);
+                }
+                
+                // Aquí puedes agregar más lógica específica de settings
+            }
+
+            // Hacer showDashboard disponible globalmente
+            window.showDashboard = showDashboard;
+        });
+    </script>
+
+</body>
+</html>

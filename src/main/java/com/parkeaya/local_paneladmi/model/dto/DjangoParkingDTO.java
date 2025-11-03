@@ -4,14 +4,15 @@ import java.math.BigDecimal;
 
 public class DjangoParkingDTO {
     private Long id;
-    private Long dueno;  // Campo que viene de Django
+    private Long dueno;
     private String nombre;
     private String direccion;
     private BigDecimal precioHora;
     private Integer totalPlazas;
     private Integer plazasDisponibles;
-    
-    // Getters and Setters
+    private Boolean activo;  // ✅ CAMPO AGREGADO
+
+    // Getters and Setters existentes...
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
@@ -32,4 +33,8 @@ public class DjangoParkingDTO {
     
     public Integer getPlazasDisponibles() { return plazasDisponibles; }
     public void setPlazasDisponibles(Integer plazasDisponibles) { this.plazasDisponibles = plazasDisponibles; }
+    
+    // ✅ GETTER Y SETTER PARA ACTIVO AGREGADOS
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
 }
